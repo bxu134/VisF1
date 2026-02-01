@@ -41,9 +41,12 @@ def get_race_data(d1: str, d2: str = None):
 
             fastest = laps.pick_fastest()
             telemetry = fastest.get_telemetry()
-            telemetry = telemetry.iloc[::4]
-            
-            return telemetry[['Speed', 'Throttle', 'Brake', 'X', 'Y']].to_dict(orient='records')
+            telemetry = telemetry.iloc[::1].copy() # add option to change "detail"
+            telemetry['Distance'] = telemetry['Distance']            
+
+            telemetry['Brake'] = telemetry['Brake'].astype(int)
+
+            return telemetry[['Distance', 'Speed', 'Throttle', 'Brake', 'X', 'Y']].to_dict(orient='records')
 
         d1_data = get_driver_telemetry(d1)
         if not d1_data:
@@ -76,4 +79,3 @@ def get_race_data(d1: str, d2: str = None):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-    
