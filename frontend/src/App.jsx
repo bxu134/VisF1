@@ -28,19 +28,19 @@ function App() {
 
   
   return (
-    <div className="h-screen bg-gray-100 p-4 font-sans">
+    <div className="h-screen p-4 font-sans         w-screen bg-blue-300">
       {/* header */}
-      <div className="mb-4 flex justify-between items-center">
+      <div className="mb-4 flex justify-between items-center           bg-green-100">
         <h1 className="text-3xl font-bold text-gray-800">VisF1 Dashboard</h1>
         <div className="bg-gray-200 px-3 py-1 rounded text-sm font-mono">Abu Dhabi 2025 - VER</div>
       </div>
 
       {/* grid layout */}
       {/* something wrong with the grid layout -> item placements+halfscreen? */}
-      <div className="grid grid-cols-3 grid-rows-3 gap-4 h-[85vh]">
+      <div className="grid grid-cols-4 grid-rows-3 gap-4 h-[85vh]              w-[98vw] p-[2vw] bg-red-100">
 
         {/* speed graph */}
-        <div className="col-span-2 row-span-2 bg-white p-4 rounded-xl shadow-md border border-gray-200">
+        <div className="col-span-2 row-span-2  p-4 rounded-xl shadow-md border border-black-200          bg-green-200">
           <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Speed (km/h)</h3>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} onMouseMove={handleHover} syncId="f1">
@@ -54,7 +54,7 @@ function App() {
         </div>
 
         {/* throttle */}
-        <div className="col-span-1 row-span-1 bg-white p-4 rounded-xl shadow-md border border-gray-200">
+        <div className="col-span-1 row-start-3 bg-white p-4 rounded-xl shadow-md border border-gray-200">
           <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Throttle %</h3>
           <ResponsiveContainer width="100%" height="80%">
             <LineChart data={data} onMouseMove={handleHover} syncId="f1">
@@ -69,7 +69,7 @@ function App() {
 
         {/* brake */}
         {/* brake was actually converted to boolean value in recent versions of fastf1, need to change data vis */}
-        <div className="col-span-1 row-span-1 bg-white p-4 rounded-xl shadow-md border border-gray-200">
+        <div className="col-span-1 row-start-3 bg-white p-4 rounded-xl shadow-md border border-gray-200">
           <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Brake</h3>
           <ResponsiveContainer width="100%" height="80%">
             <LineChart data={data} onMouseMove={handleHover} syncId="f1">
@@ -84,9 +84,9 @@ function App() {
 
         {/* track map */} 
         {/* ISSUE: track map hover dot is jumpy? maybe fixed with bigger map */}
-        <div className="col-span-1 row-span-1 bg-white p-4 rounded-xl shadow-md border border-gray-200">
+        <div className="flex flex-col col-span-2 row-span-3 bg-white p-6 rounded-xl shadow-md border border-gray-200 ">
           <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Track Map</h3>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="97%" height="97%" className="bg-blue-200 mx-auto my-auto">
             <LineChart data={data}>
               <XAxis dataKey="X" type="number" hide domain={['dataMin', 'dataMax']} />
               <YAxis dataKey="Y" type="number" hide domain={['dataMin', 'dataMax']} />
