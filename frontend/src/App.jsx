@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceDot} from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceDot, ReferenceLine, Label} from 'recharts';
 
 function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(null);
+  const [corners, setCorners] = useState([]);
 
   useEffect(() => {
     axios.get('http://localhost:8000/api/race-data?d1=ver')
       .then(res => {
         setData(res.data.driver1.data);
         setLoading(false);
+        setCorners(res.data.circuit_info.corners);
       })
       .catch(err => console.error(err));
   }, []);
@@ -46,7 +48,38 @@ function App() {
             <LineChart data={data} onMouseMove={handleHover} syncId="f1">
               <XAxis dataKey="Distance" tick={false} />
               <YAxis domain={[0,360]} hide />
-              <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+              <Tooltip 
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                formatter={(value) => value.toFixed(2)}
+                labelFormatter={(label) => label.toFixed(2)} 
+              />
+
+              {corners.map((corner) =>
+                <ReferenceLine
+                  key={corner.number}
+                  x={corner.Distance}
+                  stroke="gray"
+                  strokeDasharray="5 5" 
+                >
+                  <ReferenceDot 
+                    key={corner.number}
+                    x={corner.Distance}
+                    y={0}
+                    r={14}
+                    fill="white"
+                    stroke="gray"
+                    label={{
+                      value: corner.number,
+                    position: 'center',
+                    fill: 'black',
+                    fontSize: 12,
+                    fontWeight: 'bold'
+                    }}
+                  />
+                </ReferenceLine>
+                
+              )}
+
               <Line type="monotone" dataKey="Speed" stroke="#ef4444" strokeWidth={3} dot={false} />
               {activeIndex !== null && <ReferenceDot x={data[activeIndex].Distance} y={data[activeIndex].Speed} r={6} fill="#ef4444" stroke="white" strokeWidth={2} />}
             </LineChart>
@@ -60,7 +93,11 @@ function App() {
             <LineChart data={data} onMouseMove={handleHover} syncId="f1">
               <XAxis dataKey="Distance" hide />
               <YAxis domain={[0, 110]} hide />
-              <Tooltip />
+              <Tooltip 
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                formatter={(value) => (value == 100 || value == 0) ? Math.round(value) : value.toFixed(2)}
+                labelFormatter={(label) => label.toFixed(2)} 
+              />
               <Line type="step" dataKey="Throttle" stroke="#10b981" strokeWidth={2} dot={false} />
               {activeIndex !== null && <ReferenceDot x={data[activeIndex].Distance} y={data[activeIndex].Throttle} r={5} fill="#10b981" stroke="white" strokeWidth={2} />}
             </LineChart>
@@ -75,7 +112,11 @@ function App() {
             <LineChart data={data} onMouseMove={handleHover} syncId="f1">
               <XAxis dataKey="Distance" hide />
               <YAxis domain={[0, 1.2]} hide />
-              <Tooltip />
+              <Tooltip 
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                formatter={(value) => (value == 1 || value == 0) ? Math.round(value) : value.toFixed(2)}
+                labelFormatter={(label) => label.toFixed(2)} 
+              />
               <Line type="step" dataKey="Brake" stroke="#f59e0b" strokeWidth={2} dot={false} />
               {activeIndex !== null && <ReferenceDot x={data[activeIndex].Distance} y={data[activeIndex].Brake} r={5} fill="#f59e0b" stroke="white" strokeWidth={2} />}
             </LineChart>
@@ -86,12 +127,32 @@ function App() {
         {/* ISSUE: track map hover dot is jumpy? maybe fixed with bigger map */}
         <div className="flex flex-col col-span-2 row-span-3 bg-white p-6 rounded-xl shadow-md border border-gray-200 ">
           <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Track Map</h3>
-          <ResponsiveContainer width="97%" height="97%" className="bg-blue-200 mx-auto my-auto">
+          <ResponsiveContainer width="95%" height="95%" className="bg-blue-200 mx-auto my-auto">
             <LineChart data={data}>
               <XAxis dataKey="X" type="number" hide domain={['dataMin', 'dataMax']} />
               <YAxis dataKey="Y" type="number" hide domain={['dataMin', 'dataMax']} />
               <Line type="linear" dataKey="Y" stroke="#1f2937" strokeWidth={3} dot={false} isAnimationActive={false} />
               
+              {corners.map((corner) => (
+                <ReferenceDot
+                  key={corner.number}
+                  x={corner.X}
+                  y={corner.Y}
+                  r={16}
+                  fill="white"
+                  stroke="gray"
+                  strokeWidth={2}
+                  isFront={true}
+                  label={{
+                    value: corner.number,
+                    position: 'center',
+                    fill: 'black',
+                    fontSize: 16,
+                    fontWeight: 'bold',
+                  }}
+                />
+              ))}
+
               {/* car dot */}
               {activeIndex !== null && data[activeIndex] && (
                 <ReferenceDot 

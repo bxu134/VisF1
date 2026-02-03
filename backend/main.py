@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import fastf1
 import os
+import numpy as np
+
 
 # save downloaded race data
 cache_dir = 'cache'
@@ -19,6 +21,11 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+def rotate_point(x, y, angle):
+    x_p = x * np.cos(angle) - y * np.sin(angle)
+    y_p = x * np.sin(angle) + y * np.cos(angle)
+    return x_p, y_p
+
 @app.get("/")
 def home():
     return {"message": "api running. go to /api/race_data for telemetry data"}
@@ -34,6 +41,9 @@ def get_race_data(d1: str, d2: str = None):
         session = fastf1.get_session(year, gp, session_type)
         session.load()
 
+        circuit_info = session.get_circuit_info()
+        track_angle = circuit_info.rotation/180 * np.pi
+
         def get_driver_telemetry(d_code):
             laps = session.laps.pick_drivers(d_code)
             if laps.empty:
@@ -42,17 +52,37 @@ def get_race_data(d1: str, d2: str = None):
             fastest = laps.pick_fastest()
             telemetry = fastest.get_telemetry()
             telemetry = telemetry.iloc[::1].copy() # add option to change "detail"
-            telemetry['Distance'] = telemetry['Distance']            
+            telemetry['Distance'] = telemetry['Distance']
+
+            telemetry['X'], telemetry['Y'] = rotate_point(
+                telemetry['X'].values,
+                telemetry['Y'].values,
+                track_angle
+            )           
 
             telemetry['Brake'] = telemetry['Brake'].astype(int)
 
             return telemetry[['Distance', 'Speed', 'Throttle', 'Brake', 'X', 'Y']].to_dict(orient='records')
+
+        corner_data = []
+        for _, corner in circuit_info.corners.iterrows():
+            cx, cy = rotate_point(corner['X'], corner['Y'], track_angle)
+
+            corner_data.append({
+                "number": f"{corner['Number']}{corner['Letter']}",
+                "X": cx,
+                "Y": cy,
+                "Distance": corner['Distance']
+            })
 
         d1_data = get_driver_telemetry(d1)
         if not d1_data:
             raise HTTPException(status_code=404, detail=f"Driver {d1} not found")
 
         response = {
+            "circuit_info": {
+                "corners": corner_data
+            },
             "driver1": {
                 "code": d1,
                 "data": d1_data
