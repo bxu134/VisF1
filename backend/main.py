@@ -30,6 +30,32 @@ def rotate_point(x, y, angle):
 def home():
     return {"message": "api running. go to /api/race_data for telemetry data"}
 
+@app.get("/api/schedule")
+def get_schedule(year: int):
+    try:
+        schedule = fastf1.get_event_schedule(year)
+        event_names = schedule['EventName'].tolist()
+        return {"events": event_names}
+    except Exception as e:
+        print(f"Error fetching schedule: {e}")
+        return {"events": []}
+
+@app.get("/api/drivers")
+def get_session_drivers(year: int, gp: str):
+    try:
+        session = fastf1.get_session(year, gp, 'Q')
+        session.load(telemetry=False, weather=False, messages=False)
+
+        d_list = []
+        for d_num in session.drivers:
+            drv = session.get_driver(d_num)
+            d_list.append(drv['Abbreviation'])
+    
+        return {"drivers": d_list}
+    except Exception as e:
+        print(f"Error fetching drivers: {e}:")
+        return {"drivers": []}
+
 @app.get("/api/race-data")
 def get_race_data(year: int, gp: str, d1: str, d2: str = None):
     session_type = "Q"

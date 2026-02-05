@@ -12,6 +12,40 @@ function App() {
   const [gp, setGp] = useState('Abu Dhabi');
   const [driver, setDriver] = useState('VER');
 
+  const [eventsList, setEventsList] = useState([]);
+  const [driversList, setDriversList] = useState([]);
+
+  const currYear = new Date().getFullYear();
+  const yearOptions = Array.from( 
+    { length: currYear - 2018 + 1 },
+    (_, i) => 2018 + i
+  );
+
+
+  useEffect(() => {
+    axios.get(`http://localhost:8000/api/schedule?year=${year}`)
+      .then(res => {
+        setEventsList(res.data.events);
+        if (res.data.events.length > 0) {
+          if (!res.data.events.includes(gp)) setGp(res.data.events[0]);
+        }
+      })
+      .catch(err => {console.error("Error fetching schedule", err)});
+  }, [year]);
+
+  useEffect(() => {
+    if (year && gp) {
+      axios.get(`http://localhost:8000/api/drivers?year=${year}&gp=${gp}`)
+        .then(res => {
+          setDriversList(res.data.drivers);
+          if (res.data.drivers.length > 0) {
+            if (!res.data.drivers.includes(driver)) setDriver(res.data.drivers[0]);
+          }
+        })
+        .catch(err => {console.error("Error fetching schedule", err)});
+    }
+  }, [year, gp])
+
   const fetchTelemetry = () => {
     setLoading(true);
     axios.get(`http://localhost:8000/api/race-data?year=${year}&gp=${gp}&d1=${driver}`)
@@ -26,7 +60,7 @@ function App() {
         alert("Error fetching data. Check inputs.");
       });
   }
-
+  // fetch race telemetry
   useEffect(() => {
     fetchTelemetry();
   }, []);
@@ -49,27 +83,33 @@ function App() {
         <h1 className="text-3xl font-bold text-gray-800">VisF1 Dashboard</h1>
         {/* input controls for track/year/driver selection */}
         <div className="flex gap-2 items-center">
-          <input 
-            type="number"
+          <select
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            className="border p-1 rounded w-20 h-9" 
-            placeholder="Year"
-          />
-          <input 
-            type="text"
+            className="border border-gray-300 rounded h-9 px-2 bg-white text-sm focus:outline-none focus:border-blue-500"
+          >
+            {yearOptions.map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <select
             value={gp}
             onChange={(e) => setGp(e.target.value)}
-            className="border p-1 rounded w-20 h-9"
-            placeholder="Grand Prix" 
-          />
-          <input 
-            type="text"
+            className="border border-gray-300 rounded w-48 h-9 px-2 bg-white text-sm focus:outline-none focus:border-blue-500"
+          >
+            {eventsList.map((e, idx) => (
+              <option key={idx} value={e}>{e}</option>
+            ))}
+          </select>
+          <select
             value={driver}
             onChange={(e) => setDriver(e.target.value)}
-            className="border p-1 rounded w-20 h-9"
-            placeholder="Driver"
-          />
+            className="border border-gray-300 rounded w-24 h-9 px-2 bg-white text-sm focus:outline-none focus:border-blue-500"
+          >
+            {driversList.map((d, idx) => (
+              <option key={idx} value={d}>{d}</option>
+            ))}
+          </select>
           <button onClick={fetchTelemetry} className="bg-gray-300 text-black px-4 py-1 h-9 rounded hover:bg-blue-300 transition duration-200">
             Load
           </button>
