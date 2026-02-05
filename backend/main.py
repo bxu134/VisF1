@@ -31,10 +31,7 @@ def home():
     return {"message": "api running. go to /api/race_data for telemetry data"}
 
 @app.get("/api/race-data")
-def get_race_data(d1: str, d2: str = None):
-    # hardcode abu dhabi for testing
-    year = 2025
-    gp = "Japan"
+def get_race_data(year: int, gp: str, d1: str, d2: str = None):
     session_type = "Q"
 
     try:

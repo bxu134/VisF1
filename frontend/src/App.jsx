@@ -8,14 +8,27 @@ function App() {
   const [activeIndex, setActiveIndex] = useState(null);
   const [corners, setCorners] = useState([]);
 
-  useEffect(() => {
-    axios.get('http://localhost:8000/api/race-data?d1=ver')
+  const [year, setYear] = useState(2025);
+  const [gp, setGp] = useState('Abu Dhabi');
+  const [driver, setDriver] = useState('VER');
+
+  const fetchTelemetry = () => {
+    setLoading(true);
+    axios.get(`http://localhost:8000/api/race-data?year=${year}&gp=${gp}&d1=${driver}`)
       .then(res => {
         setData(res.data.driver1.data);
         setCorners(res.data.circuit_info.corners);
         setLoading(false);
       })
-      .catch(err => console.error(err));
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+        alert("Error fetching data. Check inputs.");
+      });
+  }
+
+  useEffect(() => {
+    fetchTelemetry();
   }, []);
   
   if (loading) {
@@ -32,9 +45,36 @@ function App() {
   return (
     <div className="h-screen p-4 font-sans         w-screen bg-blue-300">
       {/* header */}
-      <div className="mb-4 flex justify-between items-center           bg-green-100">
+      <div className="mb-4 flex justify-around items-center           bg-green-100">
         <h1 className="text-3xl font-bold text-gray-800">VisF1 Dashboard</h1>
-        <div className="bg-gray-200 px-3 py-1 rounded text-sm font-mono">Abu Dhabi 2025 - VER</div>
+        {/* input controls for track/year/driver selection */}
+        <div className="flex gap-2 items-center">
+          <input 
+            type="number"
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            className="border p-1 rounded w-20 h-9" 
+            placeholder="Year"
+          />
+          <input 
+            type="text"
+            value={gp}
+            onChange={(e) => setGp(e.target.value)}
+            className="border p-1 rounded w-20 h-9"
+            placeholder="Grand Prix" 
+          />
+          <input 
+            type="text"
+            value={driver}
+            onChange={(e) => setDriver(e.target.value)}
+            className="border p-1 rounded w-20 h-9"
+            placeholder="Driver"
+          />
+          <button onClick={fetchTelemetry} className="bg-gray-300 text-black px-4 py-1 h-9 rounded hover:bg-blue-300 transition duration-200">
+            Load
+          </button>
+        </div>
+
       </div>
 
       {/* grid layout */}
