@@ -34,7 +34,7 @@ def home():
 def get_race_data(d1: str, d2: str = None):
     # hardcode abu dhabi for testing
     year = 2025
-    gp = "Abu Dhabi"
+    gp = "Japan"
     session_type = "Q"
 
     try:
