@@ -21,6 +21,28 @@ function App() {
     (_, i) => 2018 + i
   );
 
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    let interval;
+
+    if (isPlaying && data && data.length > 0) {
+      interval = setInterval(() => {
+        setActiveIndex((prevIndex) => {
+          const curr = Number(prevIndex) ?? 0;
+
+          if (curr >= data.length - 1) {
+            setIsPlaying(false);
+            return 0;
+          }
+          return prevIndex + 1
+        });
+      }, 10);
+    }
+    
+    return () => clearInterval(interval);
+  }, [isPlaying, data]);
+
 
   useEffect(() => {
     axios.get(`http://localhost:8000/api/schedule?year=${year}`)
@@ -48,6 +70,9 @@ function App() {
 
   const fetchTelemetry = () => {
     setLoading(true);
+    setIsPlaying(false);
+    setActiveIndex(null);
+
     axios.get(`http://localhost:8000/api/race-data?year=${year}&gp=${gp}&d1=${driver}`)
       .then(res => {
         setData(res.data.driver1.data);
@@ -71,11 +96,12 @@ function App() {
 
   const handleHover = (state) => {
     if (state && state.activeTooltipIndex !== undefined) {
-      setActiveIndex(state.activeTooltipIndex);
+      setActiveIndex(Number(state.activeTooltipIndex));
+      setIsPlaying(false);
     }
   };
 
-  
+  console.log("activeIndex: ", activeIndex);
   return (
     <div className="h-screen p-4 font-sans         w-screen bg-blue-300">
       {/* header */}
@@ -113,6 +139,7 @@ function App() {
           <button onClick={fetchTelemetry} className="bg-gray-300 text-black px-4 py-1 h-9 rounded hover:bg-blue-300 transition duration-200">
             Load
           </button>
+          <button onClick={() => setIsPlaying(!isPlaying)} className="bg-green-500 text-white px-4 py-1 h-9 rounded hover:bg-green-600 transition duration-200">{isPlaying ? "Pause" : "Play"}</button>
         </div>
 
       </div>
@@ -163,7 +190,7 @@ function App() {
               ))}
 
               <Line type="monotone" dataKey="Speed" stroke="#ef4444" strokeWidth={3} dot={false} activeDot={false}/>
-              {activeIndex !== null && <ReferenceDot x={data[activeIndex].Distance} y={data[activeIndex].Speed} r={6} fill="#ef4444" stroke="white" strokeWidth={2} />}
+              {activeIndex !== null && data[activeIndex] && <ReferenceDot x={data[activeIndex].Distance} y={data[activeIndex].Speed} r={6} fill="#ef4444" stroke="white" strokeWidth={2} />}
             </LineChart>
           </ResponsiveContainer>
         </div>
