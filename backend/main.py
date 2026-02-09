@@ -85,7 +85,10 @@ def get_race_data(year: int, gp: str, d1: str, d2: str = None):
 
             telemetry['Brake'] = telemetry['Brake'].astype(int)
 
-            return telemetry[['Distance', 'Speed', 'Throttle', 'Brake', 'X', 'Y']].to_dict(orient='records')
+            telemetry['Time'] = telemetry['Time'].dt.total_seconds()
+            telemetry['Time'] = telemetry['Time'] - telemetry['Time'].iloc[0]
+
+            return telemetry[['Distance', 'Speed', 'Throttle', 'Brake', 'X', 'Y', 'Time']].to_dict(orient='records')
 
         corner_data = []
         for _, corner in circuit_info.corners.iterrows():

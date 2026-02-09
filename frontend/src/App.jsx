@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import axios from 'axios';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceDot, ReferenceLine} from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceDot, ReferenceLine } from 'recharts';
 
 function App() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeIndex, setActiveIndex] = useState(null);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [corners, setCorners] = useState([]);
 
   const [year, setYear] = useState(2025);
@@ -22,27 +22,151 @@ function App() {
   );
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [startTime, setStartTime] = useState(null);
+
+  const indexRef = useRef(0);  
+  const requestRef = useRef();
+
+  const carDotRef = useRef(null);
+  const speedDotRef = useRef(null); 
+  const throttleDotRef = useRef(null); 
+  const brakeDotRef = useRef(null); 
+
+  const { viewBox, pathData, maxDist } = useMemo(() => {
+    if (!data || data.length === 0) return { viewBox: "0 0 100 100", pathData: ""};
+
+    const xVals = data.map(d => d.X);
+    const yVals = data.map(d => d.Y);
+
+    const padding = 500;
+    const minX = Math.min(...xVals) - padding;
+    const maxX = Math.max(...xVals) + padding;
+    const minY = Math.min(...yVals) - padding;
+    const maxY = Math.max(...yVals) + padding;
+   
+    const width = maxX - minX;
+    const height = maxY - minY;
+    
+    const maxDist = Math.max(...data.map(d => d.Distance));
+
+    const d = data.map((pt, i) =>
+      `${i === 0 ? 'M' : 'L'} ${pt.X} ${pt.Y}`
+    ).join(' ');
+
+    return { 
+      viewBox: `${minX} ${minY} ${width} ${height}`, 
+      pathData: d,
+      maxDist
+    };
+  }, [data]);
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      setIsPlaying(false);
+      cancelAnimationFrame(requestRef.current);
+    } else {
+      setIsPlaying(true);
+      
+      let startIdx = indexRef.current;
+      if (startIdx >= data.length - 1) startIdx = 0;
+
+      const timeOffset = data[startIdx].Time;
+      setStartTime(Date.now() - (timeOffset * 1000));
+    }
+  };
+
+  const animate = () => {
+    if (!data || data.length === 0) return;
+
+    const now = Date.now();
+    const timeElapsed = (now - startTime) / 1000;
+
+    let idx = indexRef.current;
+    while (idx < data.length - 1 && data[idx + 1].Time < timeElapsed) {
+          idx++;
+    }
+
+    if (idx >= data.length - 1) {
+      setIsPlaying(false);
+      indexRef.current = 0; 
+      setActiveIndex(0);
+      return; 
+    }
+
+    indexRef.current = idx;
+
+    const currPt = data[idx];
+    const nextPt = data[idx + 1];
+    const duration = nextPt.Time - currPt.Time;
+    const progress = (timeElapsed - currPt.Time) / duration;
+    const safeProgress = Math.max(0, Math.min(1, progress));
+
+    const x = currPt.X + (nextPt.X - currPt.X) * safeProgress;
+    const y = currPt.Y + (nextPt.Y - currPt.Y) * safeProgress;
+
+    const dist = currPt.Distance + (nextPt.Distance - currPt.Distance) * safeProgress;
+    const speed = currPt.Speed + (nextPt.Speed - currPt.Speed) * safeProgress;
+    const throttle = currPt.Throttle + (nextPt.Throttle - currPt.Throttle) * safeProgress;
+    const brake = currPt.Brake + (nextPt.Brake - currPt.Brake) * safeProgress;
+    
+    if (carDotRef.current) {
+      carDotRef.current.setAttribute("cx", x);
+      carDotRef.current.setAttribute("cy", y);
+    }
+
+    const xPct = (dist / maxDist) * 100;
+
+    if (speedDotRef.current) {
+      const yPct = 100 - (speed / 360 * 100); 
+      speedDotRef.current.style.left = `${xPct}%`;
+      speedDotRef.current.style.top = `${yPct}%`;
+    }
+
+    if (throttleDotRef.current) {
+      const yPct = 100 - (throttle / 110 * 100);
+      throttleDotRef.current.style.left = `${xPct}%`;
+      throttleDotRef.current.style.top = `${yPct}%`;
+    }
+    if (brakeDotRef.current) {
+      const yPct = 100 - (brake / 1.2 * 100);
+      brakeDotRef.current.style.left = `${xPct}%`;
+      brakeDotRef.current.style.top = `${yPct}%`;
+    }
+
+    requestRef.current = requestAnimationFrame(animate);
+  };
 
   useEffect(() => {
-    let interval;
+    if (data && data.length > 0 && data[activeIndex]) {
+      const d = data[activeIndex];
+      const xPct = (d.Distance / maxDist) * 100;
 
-    if (isPlaying && data && data.length > 0) {
-      interval = setInterval(() => {
-        setActiveIndex((prevIndex) => {
-          const curr = Number(prevIndex) ?? 0;
-
-          if (curr >= data.length - 1) {
-            setIsPlaying(false);
-            return 0;
-          }
-          return prevIndex + 1
-        });
-      }, 10);
+      if (speedDotRef.current) {
+        speedDotRef.current.style.left = `${xPct}%`;
+        speedDotRef.current.style.top = `${100 - (d.Speed / 360 * 100)}%`;
+      }
+      if (throttleDotRef.current) {
+        throttleDotRef.current.style.left = `${xPct}%`;
+        throttleDotRef.current.style.top = `${100 - (d.Throttle / 110 * 100)}%`;
+      }
+      if (brakeDotRef.current) {
+        brakeDotRef.current.style.left = `${xPct}%`;
+        brakeDotRef.current.style.top = `${100 - (d.Brake / 1.2 * 100)}%`;
+      }
+      if (carDotRef.current) {
+        carDotRef.current.setAttribute("cx", d.X);
+        carDotRef.current.setAttribute("cy", d.Y);
+      }
     }
-    
-    return () => clearInterval(interval);
-  }, [isPlaying, data]);
+  }, [data, activeIndex, maxDist]); 
 
+  useEffect(() => {
+    if (isPlaying) {
+      requestRef.current = requestAnimationFrame(animate);
+    }
+
+    return () => cancelAnimationFrame(requestRef.current);
+  }, [isPlaying, startTime, data]);
 
   useEffect(() => {
     axios.get(`http://localhost:8000/api/schedule?year=${year}`)
@@ -71,7 +195,8 @@ function App() {
   const fetchTelemetry = () => {
     setLoading(true);
     setIsPlaying(false);
-    setActiveIndex(null);
+    setActiveIndex(0);
+    indexRef.current = 0;
 
     axios.get(`http://localhost:8000/api/race-data?year=${year}&gp=${gp}&d1=${driver}`)
       .then(res => {
@@ -96,12 +221,50 @@ function App() {
 
   const handleHover = (state) => {
     if (state && state.activeTooltipIndex !== undefined) {
-      setActiveIndex(Number(state.activeTooltipIndex));
-      setIsPlaying(false);
+      const newIdx = Number(state.activeTooltipIndex);
+      setIsPlaying(false); 
+      setActiveIndex(newIdx);
+      indexRef.current = newIdx;
+
+      if (data && data[newIdx]) {
+        const d = data[newIdx];
+        if (carDotRef.current) {
+          carDotRef.current.setAttribute("cx", d.X);
+          carDotRef.current.setAttribute("cy", d.Y);
+        }
+
+        const xPct = (d.Distance / maxDist) * 100;
+
+        if (speedDotRef.current) {
+          speedDotRef.current.style.left = `${xPct}%`;
+          speedDotRef.current.style.top = `${100 - (d.Speed / 360 * 100)}%`;
+        }
+        if (throttleDotRef.current) {
+          throttleDotRef.current.style.left = `${xPct}%`;
+          throttleDotRef.current.style.top = `${100 - (d.Throttle / 110 * 100)}%`;
+        }
+        if (brakeDotRef.current) {
+          brakeDotRef.current.style.left = `${xPct}%`;
+          brakeDotRef.current.style.top = `${100 - (d.Brake / 1.2 * 100)}%`;
+        }
+      }
     }
   };
 
-  console.log("activeIndex: ", activeIndex);
+  const OverlayDot = ({ innerRef, color }) => (
+    <div 
+      ref={innerRef}
+      className="absolute w-3 h-3 rounded-full border border-white shadow-sm"
+      style={{ 
+        backgroundColor: color,
+        transform: 'translate(-50%, -50%)', 
+        pointerEvents: 'none',
+        left: '0%', 
+        top: '100%' 
+      }}
+    />
+  );
+
   return (
     <div className="h-screen p-4 font-sans         w-screen bg-blue-300">
       {/* header */}
@@ -139,7 +302,7 @@ function App() {
           <button onClick={fetchTelemetry} className="bg-gray-300 text-black px-4 py-1 h-9 rounded hover:bg-blue-300 transition duration-200">
             Load
           </button>
-          <button onClick={() => setIsPlaying(!isPlaying)} className="bg-green-500 text-white px-4 py-1 h-9 rounded hover:bg-green-600 transition duration-200">{isPlaying ? "Pause" : "Play"}</button>
+          <button onClick={togglePlay} className="bg-green-500 text-white px-4 py-1 h-9 rounded hover:bg-green-600 transition duration-200">{isPlaying ? "Pause" : "Play"}</button>
         </div>
 
       </div>
@@ -149,133 +312,126 @@ function App() {
       <div className="grid grid-cols-4 grid-rows-3 gap-4 h-[85vh]              w-[98vw] p-[2vw] bg-red-100">
 
         {/* speed graph */}
-        <div className="col-span-2 row-span-2  p-4 rounded-xl shadow-md border border-black-200          bg-green-200">
+        <div className="flex col-span-2 row-span-2  p-4 rounded-xl shadow-md border border-black-200 relative flex-col         bg-green-200">
           <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Speed (km/h)</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} onMouseMove={handleHover} syncId="f1" >
-              <XAxis dataKey="Distance" tick={false} type="number" domain={["dataMin","dataMax"]}/>
-              <YAxis domain={[0,360]} hide />
-              <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                formatter={(value) => value.toFixed(2)}
-                labelFormatter={(label) => label.toFixed(2)} 
-              />
-              {corners.map((corner) =>(
-                <ReferenceLine
-                  key={corner.number}
-                  x={Number(corner.Distance)}
-                  stroke="gray"
-                  strokeDasharray="5 5" 
-                  ifOverflow="extendDomain"
-                />
+          <div className="relative flex-grow min-h-0">
+            <OverlayDot innerRef={speedDotRef} color="#ef4444" />
+            
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data} onMouseMove={handleHover} margin={{ top: 0, left: 0, right: 0, bottom: 0 }} syncId="f1">
+                <XAxis dataKey="Distance" tick={false} type="number" domain={["dataMin","dataMax"]} hide />
+                <YAxis domain={[0,360]} hide />
+                <Tooltip 
+                  isAnimationActive={false} 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                  formatter={(value) => value.toFixed(0)}
                   
-              ))}
-              {corners.map((corner) => (
-              <ReferenceDot 
-                    key={corner.number}
-                    x={Number(corner.Distance)}
-                    y={0}
-                    r={14}
-                    fill="white"
-                    stroke="gray"
-                    label={{
-                      value: corner.number,
-                    position: 'center',
-                    fill: 'black',
-                    fontSize: 12,
-                    fontWeight: 'bold'
-                    }}
-                    ifOverflow="extendDomain"
-                  />
-              ))}
+                  labelFormatter={(label) => label.toFixed(2)}
+                />
+                {corners.map((c) =>(
+                  <ReferenceLine key={c.number} x={Number(c.Distance)} stroke="#9ca3af" strokeDasharray="3 3" />
+                ))}
+                {corners.map((c) => (
+                   <ReferenceDot key={c.number} x={Number(c.Distance)} y={0} r={0} label={{ value: c.number, position: 'insideTop', fontSize: 10, fill: '#6b7280' }} />
+                ))}
 
-              <Line type="monotone" dataKey="Speed" stroke="#ef4444" strokeWidth={3} dot={false} activeDot={false}/>
-              {activeIndex !== null && data[activeIndex] && <ReferenceDot x={data[activeIndex].Distance} y={data[activeIndex].Speed} r={6} fill="#ef4444" stroke="white" strokeWidth={2} />}
-            </LineChart>
-          </ResponsiveContainer>
+                <Line type="monotone" dataKey="Speed" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={false} isAnimationActive={false}/>
+              </LineChart>
+            </ResponsiveContainer>
+         </div>
         </div>
 
         {/* throttle */}
-        <div className="col-span-1 row-start-3 bg-white p-4 rounded-xl shadow-md border border-gray-200">
+        <div className="flex col-span-1 row-start-3 bg-white p-4 rounded-xl shadow-md border border-gray-200 flex-col relative">
           <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Throttle %</h3>
-          <ResponsiveContainer width="100%" height="80%">
-            <LineChart data={data} onMouseMove={handleHover} syncId="f1">
-              <XAxis dataKey="Distance" hide type="number" domain={["dataMin","dataMax"]}/>
-              <YAxis domain={[0, 110]} hide />
-              <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                formatter={(value) => (value == 100 || value == 0) ? Math.round(value) : value.toFixed(2)}
-                labelFormatter={(label) => label.toFixed(2)} 
-              />
-              <Line type="step" dataKey="Throttle" stroke="#10b981" strokeWidth={2} dot={false} activeDot={false}/>
-              {activeIndex !== null && <ReferenceDot x={data[activeIndex].Distance} y={data[activeIndex].Throttle} r={5} fill="#10b981" stroke="white" strokeWidth={2} />}
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="relative flex-grow min-h-0">
+            <OverlayDot innerRef={throttleDotRef} color="#10b981" />
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data} onMouseMove={handleHover} margin={{ top: 0, left: 0, right: 0, bottom: 0 }} syncId="f1">
+                <XAxis dataKey="Distance" hide type="number" domain={["dataMin","dataMax"]}/>
+                <YAxis domain={[0, 110]} hide />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                  formatter={(value) => (value == 100 || value == 0) ? Math.round(value) : value.toFixed(2)}
+                 labelFormatter={() => ""} 
+                />
+                <Line type="step" dataKey="Throttle" stroke="#10b981" strokeWidth={2} dot={false} activeDot={false} isAnimationActive={false}/>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* brake */}
-        {/* brake was actually converted to boolean value in recent versions of fastf1, need to change data vis */}
-        <div className="col-span-1 row-start-3 bg-white p-4 rounded-xl shadow-md border border-gray-200">
+        <div className="flex col-span-1 row-start-3 bg-white p-4 rounded-xl shadow-md border border-gray-200 flex-col relative">
           <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Brake</h3>
-          <ResponsiveContainer width="100%" height="80%">
-            <LineChart data={data} onMouseMove={handleHover} syncId="f1">
-              <XAxis dataKey="Distance" hide type="number" domain={["dataMin","dataMax"]}/>
-              <YAxis domain={[0, 1.2]} hide />
-              <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                formatter={(value) => (value == 1 || value == 0) ? Math.round(value) : value.toFixed(2)}
-                labelFormatter={(label) => label.toFixed(2)} 
-              />
-              <Line type="step" dataKey="Brake" stroke="#f59e0b" strokeWidth={2} dot={false} activeDot={false}/>
-              {activeIndex !== null && <ReferenceDot x={data[activeIndex].Distance} y={data[activeIndex].Brake} r={5} fill="#f59e0b" stroke="white" strokeWidth={2} />}
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="relative flex-grow min-h-0">
+            <OverlayDot innerRef={brakeDotRef} color="#f59e0b" />
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data} onMouseMove={handleHover} margin={{ top: 0, left: 0, right: 0, bottom: 0 }} syncId="f1">
+                <XAxis dataKey="Distance" hide type="number" domain={["dataMin","dataMax"]}/>
+                <YAxis domain={[0, 1.2]} hide />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                  formatter={(value) => value > 0 ? "ON" : "OFF"}
+                  labelFormatter={() => ""} 
+                />
+
+                <Line type="step" dataKey="Brake" stroke="#f59e0b" strokeWidth={2} dot={false} activeDot={false} isAnimationActive={false}/>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* track map */} 
-        {/* ISSUE: track map hover dot is jumpy? maybe fixed with bigger map */}
-        <div className="flex flex-col col-span-2 row-span-3 bg-white p-6 rounded-xl shadow-md border border-gray-200 ">
+        <div className="relative flex flex-col col-span-2 row-span-3 bg-white p-6 rounded-xl shadow-md border border-gray-200 ">
           <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Track Map</h3>
-          <ResponsiveContainer width="95%" height="95%" className="bg-blue-200 mx-auto my-auto">
-            <LineChart data={data}>
-              <XAxis dataKey="X" type="number" hide domain={['dataMin', 'dataMax']} />
-              <YAxis dataKey="Y" type="number" hide domain={['dataMin', 'dataMax']} />
-              <Line type="linear" dataKey="Y" stroke="#1f2937" strokeWidth={3} dot={false} isAnimationActive={false} activeDot={false}/>
-              
-              {corners.map((corner) => (
-                <ReferenceDot
-                  key={corner.number}
-                  x={corner.X}
-                  y={corner.Y}
-                  r={16}
-                  fill="white"
-                  stroke="gray"
-                  strokeWidth={2}
-                  isFront={true}
-                  label={{
-                    value: corner.number,
-                    position: 'center',
-                    fill: 'black',
-                    fontSize: 16,
-                    fontWeight: 'bold',
-                  }}
-                />
+          <div className="flex-grow min-h-0 relative flex items-center justify-center bg-slate-50 rounded-lg overflow-hidden">
+            
+            <svg 
+              viewBox={viewBox} 
+              className="w-full h-full" 
+              preserveAspectRatio="xMidYMid meet"
+              style={{ transform: 'scale(0.9)' }} 
+            >
+              <path 
+                d={pathData} 
+                fill="none" 
+                stroke="#374151" 
+                strokeWidth="200" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+              />
+
+              {corners.map((corner, i) => (
+                <g key={i}>
+                  <circle cx={corner.X} cy={corner.Y} r="350" fill="white" stroke="#9ca3af" strokeWidth="50" />
+                  <text 
+                    x={corner.X} 
+                    y={corner.Y} 
+                    fill="#374151" 
+                    fontSize="350" 
+                    fontWeight="bold" 
+                    textAnchor="middle" 
+                    dominantBaseline="central"
+                  >
+                    {corner.number}
+                  </text>
+                </g>
               ))}
 
-              {/* car dot */}
-              {activeIndex !== null && data[activeIndex] && (
-                <ReferenceDot 
-                  x={data[activeIndex].X} 
-                  y={data[activeIndex].Y} 
-                  r={8} 
-                  fill="#ef4444" 
-                  stroke="white"
-                  strokeWidth={2}
-                />
-              )}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+              <circle 
+                ref={carDotRef}
+                r="300"
+                fill="#ef4444" 
+                stroke="white" 
+                strokeWidth="100"
+                cx={data && data[activeIndex] ? data[activeIndex].X : 0}
+                cy={data && data[activeIndex] ? data[activeIndex].Y : 0}
+              />
+            </svg>
+
+          </div>
+          </div>
 
       </div>
     </div>
