@@ -23,9 +23,11 @@ function App() {
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [startTime, setStartTime] = useState(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
   const indexRef = useRef(0);  
   const requestRef = useRef();
+  const speedRef = useRef(1);
 
   const carDotRef = useRef(null);
   const speedDotRef = useRef(null); 
@@ -60,6 +62,10 @@ function App() {
     };
   }, [data]);
 
+  useEffect(() => {
+    speedRef.current = playbackSpeed;
+  }, [playbackSpeed]);
+
   const togglePlay = () => {
     if (isPlaying) {
       setIsPlaying(false);
@@ -71,15 +77,28 @@ function App() {
       if (startIdx >= data.length - 1) startIdx = 0;
 
       const timeOffset = data[startIdx].Time;
-      setStartTime(Date.now() - (timeOffset * 1000));
+      setStartTime(Date.now() - ((timeOffset * 1000) / speedRef.current));
     }
+  };
+
+  const handleSpeedChange = (newSpeed) => {
+    const speed = parseFloat(newSpeed);
+
+    if (isPlaying && startTime) {
+      const now = Date.now();
+      const currVirtualTime = (now - startTime) * speedRef.current;
+    
+      setStartTime(now - (currentVirtualTime / speed));
+    }
+
+    setPlaybackSpeed(speed);
   };
 
   const animate = () => {
     if (!data || data.length === 0) return;
 
     const now = Date.now();
-    const timeElapsed = (now - startTime) / 1000;
+    const timeElapsed = ((now - startTime) * speedRef.current) / 1000;
 
     let idx = indexRef.current;
     while (idx < data.length - 1 && data[idx + 1].Time < timeElapsed) {
@@ -302,13 +321,23 @@ function App() {
           <button onClick={fetchTelemetry} className="bg-gray-300 text-black px-4 py-1 h-9 rounded hover:bg-blue-300 transition duration-200">
             Load
           </button>
+
+          <select
+            value={playbackSpeed}
+            onChange={(e) => handleSpeedChange(e.target.value)}
+            className="border border-gray-300 rounded h-9 px-2 bg-white text-sm focus:outline-none focus:border-blue-500 font-bold"
+          >
+            <option value="0.5">0.5x</option>
+            <option value="1">1.0x</option>
+            <option value="2">2.0x</option>
+            <option value="5">5.0x</option>
+          </select>
           <button onClick={togglePlay} className="bg-green-500 text-white px-4 py-1 h-9 rounded hover:bg-green-600 transition duration-200">{isPlaying ? "Pause" : "Play"}</button>
         </div>
 
       </div>
 
       {/* grid layout */}
-      {/* something wrong with the grid layout -> item placements+halfscreen? */}
       <div className="grid grid-cols-4 grid-rows-3 gap-4 h-[85vh]              w-[98vw] p-[2vw] bg-red-100">
 
         {/* speed graph */}
@@ -329,10 +358,7 @@ function App() {
                   labelFormatter={(label) => label.toFixed(2)}
                 />
                 {corners.map((c) =>(
-                  <ReferenceLine key={c.number} x={Number(c.Distance)} stroke="#9ca3af" strokeDasharray="3 3" />
-                ))}
-                {corners.map((c) => (
-                   <ReferenceDot key={c.number} x={Number(c.Distance)} y={0} r={0} label={{ value: c.number, position: 'insideTop', fontSize: 10, fill: '#6b7280' }} />
+                  <ReferenceLine key={c.number} x={Number(c.Distance)} stroke="#9ca3af" strokeDasharray="3 3" label={{ value: c.number, fill: '#5d636fff', position: 'insideBottom', fontSize: 16 }}/>
                 ))}
 
                 <Line type="monotone" dataKey="Speed" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={false} isAnimationActive={false}/>
