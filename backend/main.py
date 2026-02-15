@@ -34,7 +34,8 @@ def home():
 def get_schedule(year: int):
     try:
         schedule = fastf1.get_event_schedule(year)
-        event_names = schedule['EventName'].tolist()
+        valid_events = schedule[~schedule['EventName'].str.contains('Testing', case=False)]
+        event_names = valid_events['EventName'].tolist()
         return {"events": event_names}
     except Exception as e:
         print(f"Error fetching schedule: {e}")
@@ -62,7 +63,7 @@ def get_race_data(year: int, gp: str, d1: str, d2: str = None):
 
     try:
         session = fastf1.get_session(year, gp, session_type)
-        session.load()
+        session.load(telemetry=True, weather=False, messages=False)
 
         circuit_info = session.get_circuit_info()
         track_angle = circuit_info.rotation/180 * np.pi
