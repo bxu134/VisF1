@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import axios from 'axios';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceDot, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 function App() {
   const [data, setData] = useState([]);
@@ -88,7 +88,7 @@ function App() {
       const now = Date.now();
       const currVirtualTime = (now - startTime) * speedRef.current;
     
-      setStartTime(now - (currentVirtualTime / speed));
+      setStartTime(now - (currVirtualTime / speed));
     }
 
     setPlaybackSpeed(speed);
@@ -235,7 +235,12 @@ function App() {
   }, []);
   
   if (loading) {
-    return <div className="h-screen flex items-center justify-center text-2xl font-bold">Loading Telemetry...</div>
+    return (
+      <div className="h-screen w-full bg-neutral-950 flex flex-col items-center justify-center gap-4 text-neutral-400">
+        <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="text-sm font-mono tracking-widest uppercase">Loading Telemetry...</div>
+      </div>
+    )
   }
 
   const handleHover = (state) => {
@@ -273,7 +278,7 @@ function App() {
   const OverlayDot = ({ innerRef, color }) => (
     <div 
       ref={innerRef}
-      className="absolute w-3 h-3 rounded-full border border-white shadow-sm"
+      className="absolute w-3 h-3 rounded-full border border-white shadow-[0_0_10px_rgba(0,0,0,0.5)] z-20"
       style={{ 
         backgroundColor: color,
         transform: 'translate(-50%, -50%)', 
@@ -285,120 +290,178 @@ function App() {
   );
 
   return (
-    <div className="h-screen p-4 font-sans         w-screen bg-blue-300">
+    <div className="h-screen w-full bg-neutral-950 text-neutral-200 font-sans p-6 overflow-hidden flex flex-col selection:bg-red-500/30">
+      
       {/* header */}
-      <div className="mb-4 flex justify-around items-center           bg-green-100">
-        <h1 className="text-3xl font-bold text-gray-800">VisF1 Dashboard</h1>
-        {/* input controls for track/year/driver selection */}
-        <div className="flex gap-2 items-center">
-          <select
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            className="border border-gray-300 rounded h-9 px-2 bg-white text-sm focus:outline-none focus:border-blue-500"
+      <div className="mb-6 flex justify-between items-center border-b border-neutral-800 pb-6">
+        <div className="flex flex-col">
+            <h1 className="text-3xl font-black italic tracking-tighter text-white">
+                Vis<span className="text-red-600">F1</span>
+                <span className="text-neutral-500 text-lg not-italic font-normal ml-3 tracking-normal">Telemetry Dashboard</span>
+            </h1>
+        </div>
+
+        {/* input controls */}
+        <div className="flex gap-3 items-center bg-neutral-900 p-2 rounded-xl border border-neutral-800 shadow-lg">
+          <div className="flex gap-1 items-center px-2 border-r border-neutral-700/50">
+            <select
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                className="bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium rounded-lg h-9 px-3 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-red-600 transition-colors"
+            >
+                {yearOptions.map(y => (
+                <option key={y} value={y}>{y}</option>
+                ))}
+            </select>
+            <select
+                value={gp}
+                onChange={(e) => setGp(e.target.value)}
+                className="bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium rounded-lg h-9 px-3 w-40 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-red-600 transition-colors"
+            >
+                {eventsList.map((e, idx) => (
+                <option key={idx} value={e}>{e}</option>
+                ))}
+            </select>
+            <select
+                value={driver}
+                onChange={(e) => setDriver(e.target.value)}
+                className="bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium rounded-lg h-9 px-3 w-24 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-red-600 transition-colors"
+            >
+                {driversList.map((d, idx) => (
+                <option key={idx} value={d}>{d}</option>
+                ))}
+            </select>
+          </div>
+          
+          <button 
+            onClick={fetchTelemetry} 
+            className="bg-white text-black text-sm font-bold px-5 py-1.5 h-9 rounded-lg hover:bg-neutral-200 transition duration-200"
           >
-            {yearOptions.map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-          <select
-            value={gp}
-            onChange={(e) => setGp(e.target.value)}
-            className="border border-gray-300 rounded w-48 h-9 px-2 bg-white text-sm focus:outline-none focus:border-blue-500"
-          >
-            {eventsList.map((e, idx) => (
-              <option key={idx} value={e}>{e}</option>
-            ))}
-          </select>
-          <select
-            value={driver}
-            onChange={(e) => setDriver(e.target.value)}
-            className="border border-gray-300 rounded w-24 h-9 px-2 bg-white text-sm focus:outline-none focus:border-blue-500"
-          >
-            {driversList.map((d, idx) => (
-              <option key={idx} value={d}>{d}</option>
-            ))}
-          </select>
-          <button onClick={fetchTelemetry} className="bg-gray-300 text-black px-4 py-1 h-9 rounded hover:bg-blue-300 transition duration-200">
             Load
           </button>
+
+          <div className="w-px h-6 bg-neutral-700/50 mx-1"></div>
 
           <select
             value={playbackSpeed}
             onChange={(e) => handleSpeedChange(e.target.value)}
-            className="border border-gray-300 rounded h-9 px-2 bg-white text-sm focus:outline-none focus:border-blue-500 font-bold"
+            className="bg-neutral-950 text-neutral-400 text-xs font-mono rounded h-9 px-2 border border-neutral-800 focus:outline-none focus:border-red-600"
           >
             <option value="0.5">0.5x</option>
             <option value="1">1.0x</option>
             <option value="2">2.0x</option>
             <option value="5">5.0x</option>
           </select>
-          <button onClick={togglePlay} className="bg-green-500 text-white px-4 py-1 h-9 rounded hover:bg-green-600 transition duration-200">{isPlaying ? "Pause" : "Play"}</button>
+          <button 
+            onClick={togglePlay} 
+            className={`px-6 py-1.5 h-9 rounded-lg text-sm font-bold transition duration-200 flex items-center gap-2 ${
+                isPlaying 
+                ? "bg-red-600/10 text-red-500 hover:bg-red-600/20 border border-red-600/20" 
+                : "bg-green-600 text-white hover:bg-green-500 shadow-[0_0_15px_rgba(22,163,74,0.4)]"
+            }`}
+          >
+            {isPlaying ? "Pause" : "Play Analysis"}
+          </button>
         </div>
 
       </div>
 
       {/* grid layout */}
-      <div className="grid grid-cols-4 grid-rows-3 gap-4 h-[85vh]              w-[98vw] p-[2vw] bg-red-100">
+      <div className="grid grid-cols-4 grid-rows-3 gap-6 h-full pb-4">
 
         {/* speed graph */}
-        <div className="flex col-span-2 row-span-2  p-4 rounded-xl shadow-md border border-black-200 relative flex-col         bg-green-200">
-          <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Speed (km/h)</h3>
+        <div className="col-span-2 row-span-2 bg-neutral-900/50 backdrop-blur rounded-2xl border border-neutral-800 p-5 shadow-xl flex flex-col relative group">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-mono text-neutral-500 text-xs uppercase tracking-widest font-bold">Velocity Data</h3>
+            <span className="text-xs font-mono text-red-500 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">LIVE TEL</span>
+          </div>
+          
           <div className="relative flex-grow min-h-0">
             <OverlayDot innerRef={speedDotRef} color="#ef4444" />
             
             <ResponsiveContainer width="100%" height="100%">
+              {/* REVERTED MARGIN TO 0 TO FIX ALIGNMENT */}
               <LineChart data={data} onMouseMove={handleHover} margin={{ top: 0, left: 0, right: 0, bottom: 0 }} syncId="f1">
                 <XAxis dataKey="Distance" tick={false} type="number" domain={["dataMin","dataMax"]} hide />
                 <YAxis domain={[0,360]} hide />
                 <Tooltip 
                   isAnimationActive={false} 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                  formatter={(value) => value.toFixed(0)}
-                  
-                  labelFormatter={(label) => label.toFixed(2)}
+                  contentStyle={{ backgroundColor: '#171717', borderRadius: '8px', border: '1px solid #333', color: '#fff', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
+                  itemStyle={{ color: '#ef4444', fontFamily: 'monospace' }}
+                  labelStyle={{ color: '#666', marginBottom: '0.25rem', fontSize: '0.75rem' }}
+                  formatter={(value) => [`${value.toFixed(0)} km/h`, 'Speed']}
+                  labelFormatter={(label) => `Dist: ${label.toFixed(0)}m`}
+                  cursor={{ stroke: '#404040', strokeWidth: 1 }}
                 />
                 {corners.map((c) =>(
-                  <ReferenceLine key={c.number} x={Number(c.Distance)} stroke="#9ca3af" strokeDasharray="3 3" label={{ value: c.number, fill: '#5d636fff', position: 'insideBottom', fontSize: 16 }}/>
+                  <ReferenceLine 
+                    key={c.number} 
+                    x={Number(c.Distance)} 
+                    stroke="#404040" 
+                    strokeDasharray="3 3" 
+                    label={{ value: c.number, fill: '#666', position: 'insideBottom', fontSize: 12 }}
+                />
                 ))}
 
-                <Line type="monotone" dataKey="Speed" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={false} isAnimationActive={false}/>
+                <Line 
+                    type="monotone" 
+                    dataKey="Speed" 
+                    stroke="#ef4444" 
+                    strokeWidth={2} 
+                    dot={false} 
+                    activeDot={{ r: 4, fill: '#ef4444', stroke: '#fff', strokeWidth: 2 }} 
+                    isAnimationActive={false}
+                />
               </LineChart>
             </ResponsiveContainer>
          </div>
         </div>
 
         {/* throttle */}
-        <div className="flex col-span-1 row-start-3 bg-white p-4 rounded-xl shadow-md border border-gray-200 flex-col relative">
-          <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Throttle %</h3>
+        <div className="col-span-1 row-start-3 bg-neutral-900/50 backdrop-blur rounded-2xl border border-neutral-800 p-5 shadow-xl flex flex-col relative">
+          <h3 className="font-mono text-neutral-500 text-xs uppercase tracking-widest font-bold mb-4">Throttle Input</h3>
           <div className="relative flex-grow min-h-0">
             <OverlayDot innerRef={throttleDotRef} color="#10b981" />
             <ResponsiveContainer width="100%" height="100%">
+              {/* REVERTED MARGIN TO 0 TO FIX ALIGNMENT */}
               <LineChart data={data} onMouseMove={handleHover} margin={{ top: 0, left: 0, right: 0, bottom: 0 }} syncId="f1">
                 <XAxis dataKey="Distance" hide type="number" domain={["dataMin","dataMax"]}/>
                 <YAxis domain={[0, 110]} hide />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                  formatter={(value) => (value == 100 || value == 0) ? Math.round(value) : value.toFixed(2)}
-                 labelFormatter={() => ""} 
+                   contentStyle={{ backgroundColor: '#171717', borderRadius: '8px', border: '1px solid #333', color: '#fff' }}
+                   itemStyle={{ color: '#10b981', fontFamily: 'monospace' }}
+                  formatter={(value) => [`${Math.round(value)}%`, 'Throttle']}
+                  labelFormatter={() => ""} 
                 />
-                <Line type="step" dataKey="Throttle" stroke="#10b981" strokeWidth={2} dot={false} activeDot={false} isAnimationActive={false}/>
+                <Line 
+                    type="step" 
+                    dataKey="Throttle" 
+                    stroke="#10b981" 
+                    strokeWidth={2} 
+                    dot={false} 
+                    activeDot={false} 
+                    isAnimationActive={false}
+                    fill="url(#gradientThrottle)"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* brake */}
-        <div className="flex col-span-1 row-start-3 bg-white p-4 rounded-xl shadow-md border border-gray-200 flex-col relative">
-          <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Brake</h3>
+        <div className="col-span-1 row-start-3 bg-neutral-900/50 backdrop-blur rounded-2xl border border-neutral-800 p-5 shadow-xl flex flex-col relative">
+          <h3 className="font-mono text-neutral-500 text-xs uppercase tracking-widest font-bold mb-4">Brake Pressure</h3>
           <div className="relative flex-grow min-h-0">
             <OverlayDot innerRef={brakeDotRef} color="#f59e0b" />
             <ResponsiveContainer width="100%" height="100%">
+              {/* REVERTED MARGIN TO 0 TO FIX ALIGNMENT */}
               <LineChart data={data} onMouseMove={handleHover} margin={{ top: 0, left: 0, right: 0, bottom: 0 }} syncId="f1">
                 <XAxis dataKey="Distance" hide type="number" domain={["dataMin","dataMax"]}/>
                 <YAxis domain={[0, 1.2]} hide />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                  formatter={(value) => value > 0 ? "ON" : "OFF"}
+                  contentStyle={{ backgroundColor: '#171717', borderRadius: '8px', border: '1px solid #333', color: '#fff' }}
+                  itemStyle={{ color: '#f59e0b', fontFamily: 'monospace' }}
+                  formatter={(value) => [value > 0 ? "ON" : "OFF", 'Brake']}
                   labelFormatter={() => ""} 
                 />
 
@@ -409,33 +472,53 @@ function App() {
         </div>
 
         {/* track map */} 
-        <div className="relative flex flex-col col-span-2 row-span-3 bg-white p-6 rounded-xl shadow-md border border-gray-200 ">
-          <h3 className="font-bold text-gray-500 mb-2 uppercase text-xs">Track Map</h3>
-          <div className="flex-grow min-h-0 relative flex items-center justify-center bg-slate-50 rounded-lg overflow-hidden">
-            
+        <div className="col-span-2 row-span-3 bg-neutral-900/80 backdrop-blur rounded-2xl border border-neutral-800 p-6 shadow-xl relative overflow-hidden flex flex-col">
+          {/* REMOVED DECORATIVE CROSS ARTIFACT */}
+          <h3 className="font-mono text-neutral-500 text-xs uppercase tracking-widest font-bold mb-2 z-10">Circuit Map</h3>
+          
+          <div className="flex-grow min-h-0 relative flex items-center justify-center rounded-lg">
             <svg 
               viewBox={viewBox} 
-              className="w-full h-full" 
+              className="w-full h-full drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]" 
               preserveAspectRatio="xMidYMid meet"
-              style={{ transform: 'scale(0.9)' }} 
+              style={{ transform: 'scale(0.95)' }} 
             >
+              <defs>
+                {/* INCREASED FILTER REGION TO PREVENT CLIPPING */}
+                <filter id="glow" x="-500%" y="-500%" width="1000%" height="1000%">
+                  <feGaussianBlur stdDeviation="100" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
+
+              {/* Track Path */}
               <path 
                 d={pathData} 
                 fill="none" 
-                stroke="#374151" 
+                stroke="#404040" 
                 strokeWidth="200" 
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
               />
+              <path 
+                d={pathData} 
+                fill="none" 
+                stroke="#d4d4d4" 
+                strokeWidth="80" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+              />
 
+              {/* Corners */}
               {corners.map((corner, i) => (
                 <g key={i}>
-                  <circle cx={corner.X} cy={corner.Y} r="350" fill="white" stroke="#9ca3af" strokeWidth="50" />
+                  <circle cx={corner.X} cy={corner.Y} r="150" fill="#171717" stroke="#525252" strokeWidth="30" />
                   <text 
                     x={corner.X} 
                     y={corner.Y} 
-                    fill="#374151" 
-                    fontSize="350" 
+                    fill="#a3a3a3" 
+                    fontSize="250" 
+                    fontFamily="monospace"
                     fontWeight="bold" 
                     textAnchor="middle" 
                     dominantBaseline="central"
@@ -445,14 +528,16 @@ function App() {
                 </g>
               ))}
 
+              {/* Car Marker */}
               <circle 
                 ref={carDotRef}
-                r="300"
+                r="350"
                 fill="#ef4444" 
                 stroke="white" 
                 strokeWidth="100"
                 cx={data && data[activeIndex] ? data[activeIndex].X : 0}
                 cy={data && data[activeIndex] ? data[activeIndex].Y : 0}
+                style={{ filter: 'url(#glow)' }}
               />
             </svg>
 
