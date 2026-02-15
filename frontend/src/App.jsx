@@ -179,6 +179,8 @@ function App() {
     }
   }, [data, activeIndex, maxDist]); 
 
+  const API_URL = "https://visf1.onrender.com";
+
   useEffect(() => {
     if (isPlaying) {
       requestRef.current = requestAnimationFrame(animate);
@@ -188,7 +190,7 @@ function App() {
   }, [isPlaying, startTime, data]);
 
   useEffect(() => {
-    axios.get(`http://localhost:8000/api/schedule?year=${year}`)
+    axios.get(`${API_URL}/api/schedule?year=${year}`)
       .then(res => {
         setEventsList(res.data.events);
         if (res.data.events.length > 0) {
@@ -200,7 +202,7 @@ function App() {
 
   useEffect(() => {
     if (year && gp) {
-      axios.get(`http://localhost:8000/api/drivers?year=${year}&gp=${gp}`)
+      axios.get(`${API_URL}/api/drivers?year=${year}&gp=${gp}`)
         .then(res => {
           setDriversList(res.data.drivers);
           if (res.data.drivers.length > 0) {
@@ -217,7 +219,7 @@ function App() {
     setActiveIndex(0);
     indexRef.current = 0;
 
-    axios.get(`http://localhost:8000/api/race-data?year=${year}&gp=${gp}&d1=${driver}`)
+    axios.get(`${API_URL}/api/race-data?year=${year}&gp=${gp}&d1=${driver}`)
       .then(res => {
         setData(res.data.driver1.data);
         setCorners(res.data.circuit_info.corners);
