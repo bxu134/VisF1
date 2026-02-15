@@ -74,7 +74,7 @@ def get_race_data(year: int, gp: str, d1: str, d2: str = None):
 
             fastest = laps.pick_fastest()
             telemetry = fastest.get_telemetry()
-            telemetry = telemetry.iloc[::1].copy() # add option to change "detail"
+            telemetry = telemetry.iloc[::4].copy() # add option to change "detail"
             telemetry['Distance'] = telemetry['Distance']
 
             telemetry['X'], telemetry['Y'] = rotate_point(
