@@ -240,7 +240,12 @@ function App() {
     return (
       <div className="h-screen w-full bg-neutral-950 flex flex-col items-center justify-center gap-4 text-neutral-400">
         <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-        <div className="text-sm font-mono tracking-widest uppercase">Loading Telemetry...</div>
+        <div className="text-sm font-mono tracking-widest uppercase animate-pulse">
+          Downloading Telemetry from FIA...
+        </div>
+        <div className="text-xs text-neutral-600 font-mono">
+          (First load can take 15-20 seconds)
+        </div>
       </div>
     )
   }
