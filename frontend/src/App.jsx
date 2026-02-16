@@ -183,6 +183,10 @@ function App() {
 
   // const API_URL = "http://127.0.0.1:8000";
   useEffect(() => {
+    document.title = `VisF1 - ${gp}`;
+  }, [gp]); 
+
+  useEffect(() => {
     if (isPlaying) {
       requestRef.current = requestAnimationFrame(animate);
     }
