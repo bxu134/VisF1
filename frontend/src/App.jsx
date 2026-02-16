@@ -9,7 +9,7 @@ function App() {
   const [corners, setCorners] = useState([]);
 
   const [year, setYear] = useState(2025);
-  const [gp, setGp] = useState('Abu Dhabi');
+  const [gp, setGp] = useState('Australia');
   const [driver, setDriver] = useState('VER');
 
   const [eventsList, setEventsList] = useState([]);
