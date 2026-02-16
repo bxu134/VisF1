@@ -63,7 +63,7 @@ def get_race_data(year: int, gp: str, d1: str, d2: str = None):
 
     try:
         session = fastf1.get_session(year, gp, session_type)
-        session.load(telemetry=False, weather=False, messages=False)
+        session.load(telemetry=True, weather=False, messages=False)
 
         circuit_info = session.get_circuit_info()
         track_angle = circuit_info.rotation/180 * np.pi
